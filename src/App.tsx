@@ -113,6 +113,10 @@ type Exercicio = {
   finalizado: boolean;
   ordem: number;
   historicoCargas: { carga: string; data: string }[];
+  feedbackDificuldade?: 'facil' | 'medio' | 'dificil' | '';
+  feedbackEnergia?: 'baixa' | 'normal' | 'alta' | '';
+  feedbackDor?: 'nao' | 'sim' | '';
+  feedbackComentario?: string;
 };
 
 type Treino = {
@@ -1272,6 +1276,10 @@ export default function App() {
       finalizado: false,
       ordem: -1,
       historicoCargas: [],
+      feedbackDificuldade: '',
+      feedbackEnergia: '',
+      feedbackDor: '',
+      feedbackComentario: '',
     };
 
     setNovoExercicioDraft(novo);
@@ -1366,6 +1374,10 @@ export default function App() {
       finalizado: false,
       ordem: 0,
       historicoCargas: [],
+      feedbackDificuldade: exercicio.feedbackDificuldade || '',
+      feedbackEnergia: exercicio.feedbackEnergia || '',
+      feedbackDor: exercicio.feedbackDor || '',
+      feedbackComentario: exercicio.feedbackComentario || '',
     };
   }
 
@@ -3547,6 +3559,10 @@ function MobileExerciseCard({
   onSalvarBiblioteca,
   onFecharTimer,
 }: any) {
+  const [abaExercicio, setAbaExercicio] = useState<'execucao' | 'detalhes' | 'historico' | 'feedback'>(
+    perfil?.tipo === 'professor' ? 'detalhes' : 'execucao'
+  );
+
   const totalSeries = Number(ex.series) || 0;
   const feitas = ex.seriesConcluidas || [];
   const proximaSerie =
@@ -3562,6 +3578,7 @@ function MobileExerciseCard({
       .includes(String(ex.nome || '').toLowerCase());
 
   const tempoParaMostrar = timerDesteExercicio ? tempoRestante : descanso;
+  const progressoSeries = totalSeries ? Math.round((feitas.length / totalSeries) * 100) : 0;
 
   if (!aberto) {
     return (
@@ -3571,7 +3588,7 @@ function MobileExerciseCard({
         onDragOver={(e) => e.preventDefault()}
         onDrop={onDrop}
         onClick={onToggle}
-        style={mobileStyles.exerciseMini}
+        style={mobileStyles.exerciseMiniPremium}
       >
         <div style={mobileStyles.miniLeft}>
           <span
@@ -3582,19 +3599,56 @@ function MobileExerciseCard({
             {ex.finalizado ? '✓' : ''}
           </span>
 
-          <div>
-            <b>{ex.nome || 'Exercício sem nome'}</b>
+          <div style={{ minWidth: 0 }}>
+            <b style={mobileStyles.miniTitle}>{ex.nome || 'Exercício sem nome'}</b>
             <small style={mobileStyles.textSoft}>
               {ex.series || '-'} séries • {ex.repeticoes || '-'} reps •{' '}
               {ex.descanso || '-'}s
+              {ex.cargaSugerida ? ` • Carga: ${ex.cargaSugerida}` : ''}
             </small>
           </div>
         </div>
 
-        <small style={mobileStyles.textSoft}>Minimizado</small>
+        {perfil?.tipo === 'professor' ? (
+          <div style={mobileStyles.miniActions} onClick={(e) => e.stopPropagation()}>
+            <button
+              style={mobileStyles.miniLibraryButton}
+              onClick={onSalvarBiblioteca}
+              title="Enviar exercício para biblioteca"
+            >
+              💾 Biblioteca
+            </button>
+
+            <button
+              style={mobileStyles.miniDeleteButton}
+              onClick={onExcluir}
+              title="Excluir exercício do treino"
+            >
+              🗑️ Excluir
+            </button>
+
+            <button style={mobileStyles.miniOpenButton} onClick={onToggle} title="Abrir exercício">
+              +
+            </button>
+          </div>
+        ) : (
+          <div style={mobileStyles.miniProgressBox}>
+            <b>{progressoSeries}%</b>
+            <small style={mobileStyles.textSoft}>séries</small>
+          </div>
+        )}
       </div>
     );
   }
+
+  const abaButton = (id: 'execucao' | 'detalhes' | 'historico' | 'feedback', label: string) => (
+    <button
+      style={abaExercicio === id ? mobileStyles.exerciseTabActive : mobileStyles.exerciseTab}
+      onClick={() => setAbaExercicio(id)}
+    >
+      {label}
+    </button>
+  );
 
   return (
     <div
@@ -3627,14 +3681,20 @@ function MobileExerciseCard({
           </div>
         </div>
 
-        <button style={mobileStyles.moreButton}>•••</button>
+        {perfil?.tipo === 'professor' ? (
+          <button style={mobileStyles.headerDeleteButton} onClick={onExcluir} title="Excluir exercício">
+            🗑️
+          </button>
+        ) : (
+          <button style={mobileStyles.moreButton}>•••</button>
+        )}
       </div>
 
-      <div style={mobileStyles.heroCard}>
-        <div style={mobileStyles.exerciseIcon}>🏋️</div>
+      <div style={mobileStyles.heroCardCompact}>
+        <div style={mobileStyles.exerciseIconSmall}>🏋️</div>
 
         <div style={{ flex: 1 }}>
-          <h2 style={mobileStyles.exerciseName}>
+          <h2 style={mobileStyles.exerciseNameCompact}>
             {ex.nome || 'Exercício sem nome'}
           </h2>
           <p style={mobileStyles.exerciseSub}>
@@ -3646,223 +3706,269 @@ function MobileExerciseCard({
           <div style={mobileStyles.chipsRow}>
             <span style={mobileStyles.chip}>▰ {ex.series || '-'} séries</span>
             <span style={mobileStyles.chip}>↻ {ex.repeticoes || '-'} reps</span>
-            <span style={mobileStyles.chip}>
-              ◷ {ex.descanso || '-'}s descanso
-            </span>
-            <span style={mobileStyles.chip}>⚗ Método: {ex.metodo || '-'}</span>
+            <span style={mobileStyles.chip}>◷ {ex.descanso || '-'}s</span>
+            {ex.metodo && <span style={mobileStyles.chip}>⚗ {ex.metodo}</span>}
           </div>
         </div>
-
-        <button style={mobileStyles.bookmarkButton}>♡</button>
       </div>
 
-      <div style={mobileStyles.videoCard}>
-        <PlayerVideoSeguro url={ex.video} nome={ex.nome} />
-
-        {(perfil?.tipo === 'aluno' || perfil?.tipo === 'professor') && (
-          <div style={mobileStyles.videoInputBox}>
-            <input
-              style={mobileStyles.videoInput}
-              placeholder="Cole o link do vídeo deste exercício"
-              value={ex.video || ''}
-              onChange={(e) => onAtualizar('video', e.target.value)}
-            />
-          </div>
-        )}
+      <div style={mobileStyles.exerciseTabsBar}>
+        {abaButton('execucao', 'Execução')}
+        {abaButton('detalhes', perfil?.tipo === 'professor' ? 'Editar' : 'Detalhes')}
+        {abaButton('historico', 'Histórico')}
+        {perfil?.tipo === 'aluno' && abaButton('feedback', 'Feedback')}
       </div>
 
-      {perfil?.tipo === 'aluno' && (
-        <>
-          <div style={mobileStyles.sectionHeader}>
-            <h3 style={{ margin: 0 }}>Séries</h3>
-            <button style={mobileStyles.historyButton}>↗ Ver histórico</button>
+      {abaExercicio === 'execucao' && (
+        <div style={mobileStyles.tabPanel}>
+          <div style={mobileStyles.videoCardCompact}>
+            <PlayerVideoSeguro url={ex.video} nome={ex.nome} />
+
+            {(perfil?.tipo === 'aluno' || perfil?.tipo === 'professor') && (
+              <div style={mobileStyles.videoInputBox}>
+                <input
+                  style={mobileStyles.videoInput}
+                  placeholder="Cole o link do vídeo deste exercício"
+                  value={ex.video || ''}
+                  onChange={(e) => onAtualizar('video', e.target.value)}
+                />
+              </div>
+            )}
           </div>
 
-          <div style={mobileStyles.seriesGrid}>
-            {Array.from({ length: totalSeries || 1 }, (_, i) => {
-              const serie = i + 1;
-              const concluida = feitas.includes(serie);
-              const emAndamento = !concluida && serie === proximaSerie;
+          {perfil?.tipo === 'aluno' && (
+            <>
+              <div style={mobileStyles.sectionHeader}>
+                <h3 style={{ margin: 0 }}>Séries</h3>
+                <b style={{ color: '#A855F7' }}>{feitas.length}/{totalSeries || 0}</b>
+              </div>
 
-              return (
-                <button
-                  key={serie}
-                  style={{
-                    ...mobileStyles.serieCard,
-                    ...(concluida ? mobileStyles.serieDone : {}),
-                    ...(emAndamento ? mobileStyles.serieActive : {}),
-                  }}
-                  onClick={() => onMarcarSerie(serie)}
-                >
-                  <span
-                    style={{
-                      ...mobileStyles.serieIcon,
-                      background: concluida
-                        ? '#22C55E'
-                        : emAndamento
-                        ? '#7C3AED'
-                        : '#334155',
-                    }}
-                  >
-                    {concluida ? '✓' : emAndamento ? '▶' : serie}
-                  </span>
+              <div style={mobileStyles.seriesGridCompact}>
+                {Array.from({ length: totalSeries || 1 }, (_, i) => {
+                  const serie = i + 1;
+                  const concluida = feitas.includes(serie);
+                  const emAndamento = !concluida && serie === proximaSerie;
 
-                  <b>Série {serie}</b>
-                  <small>{ex.repeticoes || '-'} reps</small>
-                  <small
-                    style={{
-                      color: concluida
-                        ? '#22C55E'
-                        : emAndamento
-                        ? '#A855F7'
-                        : '#CBD5E1',
-                    }}
-                  >
-                    {concluida
-                      ? '✓ Concluída'
-                      : emAndamento
-                      ? 'Em andamento'
-                      : 'Pendente'}
-                  </small>
-                </button>
-              );
-            })}
-          </div>
+                  return (
+                    <button
+                      key={serie}
+                      style={{
+                        ...mobileStyles.serieCardCompact,
+                        ...(concluida ? mobileStyles.serieDone : {}),
+                        ...(emAndamento ? mobileStyles.serieActive : {}),
+                      }}
+                      onClick={() => onMarcarSerie(serie)}
+                    >
+                      <span
+                        style={{
+                          ...mobileStyles.serieIconSmall,
+                          background: concluida
+                            ? '#22C55E'
+                            : emAndamento
+                            ? '#7C3AED'
+                            : '#334155',
+                        }}
+                      >
+                        {concluida ? '✓' : emAndamento ? '▶' : serie}
+                      </span>
 
-          <div style={mobileStyles.timerCard}>
-            <div style={mobileStyles.timerTop}>
-              <b style={{ color: '#A855F7' }}>SÉRIE {proximaSerie || 1}</b>
-              <span>Descanso: {descanso || '-'}s ✎</span>
-            </div>
+                      <b>Série {serie}</b>
+                      <small>{ex.repeticoes || '-'} reps</small>
+                    </button>
+                  );
+                })}
+              </div>
 
-            <div style={mobileStyles.timerCircle}>
-              <div
-                style={{
-                  ...mobileStyles.timerRing,
-                  background: `conic-gradient(#7C3AED ${
-                    timerDesteExercicio ? 65 : 0
-                  }%, #1E293B 0%)`,
-                }}
-              >
-                <div style={mobileStyles.timerInner}>
-                  <strong>
-                    {formatarTempo(Number(tempoParaMostrar) || 0)}
-                  </strong>
-                  <span>{timerDesteExercicio ? 'Descansando' : 'Pronto'}</span>
+              <div style={mobileStyles.timerCardCompact}>
+                <div>
+                  <b style={{ color: '#A855F7' }}>Descanso</b>
+                  <p style={{ margin: '4px 0 0', color: '#CBD5E1' }}>{timerDesteExercicio ? 'Descansando agora' : 'Pronto para a próxima série'}</p>
+                </div>
+
+                <div style={mobileStyles.timerCompactRight}>
+                  <strong>{formatarTempo(Number(tempoParaMostrar) || 0)}</strong>
+                  <button style={mobileStyles.skipButton} onClick={onFecharTimer}>Pular</button>
                 </div>
               </div>
 
-              <button style={mobileStyles.pauseButton}>
-                {timerDesteExercicio ? 'Ⅱ' : '▶'}
-              </button>
-            </div>
+              <details style={mobileStyles.dropCard} open>
+                <summary style={mobileStyles.dropSummary}>
+                  <span>🏋️ Carga utilizada</span>
+                  <span>›</span>
+                </summary>
 
-            <div style={mobileStyles.timerActions}>
-              <span>🔊 Som do timer</span>
-              <button style={mobileStyles.skipButton} onClick={onFecharTimer}>
-                Pular descanso ▷
+                <input
+                  style={mobileStyles.inputMobile}
+                  placeholder="Ex.: 60 kg"
+                  value={ex.cargaAtual || ''}
+                  onChange={(e) => onAtualizar('cargaAtual', e.target.value)}
+                />
+              </details>
+
+              <button style={mobileStyles.finishButton} onClick={onFinalizar}>
+                ✓ Finalizar exercício
+              </button>
+            </>
+          )}
+
+          {perfil?.tipo === 'professor' && (
+            <div style={mobileStyles.professorQuickActions}>
+              <button style={mobileStyles.saveModelButton} onClick={onSalvarBiblioteca}>
+                💾 Enviar para biblioteca
+              </button>
+              <button style={mobileStyles.deleteButton} onClick={onExcluir}>
+                🗑️ Remover do treino
               </button>
             </div>
-          </div>
-        </>
+          )}
+        </div>
       )}
 
-      <details style={mobileStyles.dropCard}>
-        <summary style={mobileStyles.dropSummary}>
-          <span>🏋️ Carga utilizada</span>
-          <span>›</span>
-        </summary>
+      {abaExercicio === 'detalhes' && (
+        <div style={mobileStyles.tabPanel}>
+          {perfil?.tipo === 'professor' ? (
+            <div style={mobileStyles.editGrid}>
+              <input style={mobileStyles.inputMobile} placeholder="Nome" value={ex.nome || ''} onChange={(e) => onAtualizar('nome', e.target.value)} />
+              <input style={mobileStyles.inputMobile} placeholder="Séries" value={ex.series || ''} onChange={(e) => onAtualizar('series', e.target.value)} />
+              <input style={mobileStyles.inputMobile} placeholder="Repetições" value={ex.repeticoes || ''} onChange={(e) => onAtualizar('repeticoes', e.target.value)} />
+              <input style={mobileStyles.inputMobile} placeholder="Descanso em segundos" value={ex.descanso || ''} onChange={(e) => onAtualizar('descanso', e.target.value)} />
+              <input style={mobileStyles.inputMobile} placeholder="Carga sugerida" value={ex.cargaSugerida || ''} onChange={(e) => onAtualizar('cargaSugerida', e.target.value)} />
+              <input style={mobileStyles.inputMobile} placeholder="Método" value={ex.metodo || ''} onChange={(e) => onAtualizar('metodo', e.target.value)} />
+              <input style={mobileStyles.inputMobile} placeholder="Velocidade" value={ex.velocidade || ''} onChange={(e) => onAtualizar('velocidade', e.target.value)} />
+              <textarea style={mobileStyles.textareaMobile} placeholder="Observação do professor" value={ex.obsProfessor || ''} onChange={(e) => onAtualizar('obsProfessor', e.target.value)} />
 
-        <input
-          style={mobileStyles.inputMobile}
-          placeholder="Ex.: 60 kg"
-          value={ex.cargaAtual || ''}
-          disabled={perfil?.tipo !== 'aluno'}
-          onChange={(e) => onAtualizar('cargaAtual', e.target.value)}
-        />
-      </details>
+              <div style={mobileStyles.professorQuickActions}>
+                <button style={mobileStyles.saveModelButton} onClick={onSalvarBiblioteca}>💾 Salvar na biblioteca</button>
+                <button style={mobileStyles.deleteButton} onClick={onExcluir}>🗑️ Excluir do treino</button>
+              </div>
+            </div>
+          ) : (
+            <div style={mobileStyles.detailList}>
+              <InfoLinha titulo="Método" valor={ex.metodo || '-'} />
+              <InfoLinha titulo="Velocidade" valor={ex.velocidade || '-'} />
+              <InfoLinha titulo="Descanso" valor={`${ex.descanso || '-'}s`} />
+              <InfoLinha titulo="Observação do professor" valor={ex.obsProfessor || '-'} />
 
-      <details style={mobileStyles.dropCard}>
-        <summary style={mobileStyles.dropSummary}>
-          <span>📋 Observações</span>
-          <span>›</span>
-        </summary>
+              <details style={mobileStyles.dropCard}>
+                <summary style={mobileStyles.dropSummary}>
+                  <span>📋 Minha observação</span>
+                  <span>›</span>
+                </summary>
+                <textarea
+                  style={mobileStyles.textareaMobile}
+                  placeholder="Como foi a execução?"
+                  value={ex.obsAluno || ''}
+                  onChange={(e) => onAtualizar('obsAluno', e.target.value)}
+                />
+              </details>
+            </div>
+          )}
+        </div>
+      )}
 
-        <textarea
-          style={mobileStyles.textareaMobile}
-          placeholder="Como foi a execução?"
-          value={
-            perfil?.tipo === 'aluno' ? ex.obsAluno || '' : ex.obsProfessor || ''
-          }
-          onChange={(e) =>
-            onAtualizar(
-              perfil?.tipo === 'aluno' ? 'obsAluno' : 'obsProfessor',
-              e.target.value
-            )
-          }
-        />
-      </details>
+      {abaExercicio === 'historico' && (
+        <div style={mobileStyles.tabPanel}>
+          <h3 style={{ marginTop: 0 }}>Histórico</h3>
+          {(ex.historicoCargas || []).length === 0 && (
+            <p style={mobileStyles.textSoft}>Nenhuma carga registrada ainda.</p>
+          )}
 
-      {perfil?.tipo === 'professor' && (
-        <details style={mobileStyles.dropCard}>
-          <summary style={mobileStyles.dropSummary}>
-            <span>✏️ Editar exercício</span>
-            <span>›</span>
-          </summary>
+          {(ex.historicoCargas || []).slice().reverse().map((item: any, index: number) => (
+            <div key={index} style={mobileStyles.historyLine}>
+              <b>{item.carga}</b>
+              <small>{item.data}</small>
+            </div>
+          ))}
 
-          <input
-            style={mobileStyles.inputMobile}
-            placeholder="Nome"
-            value={ex.nome || ''}
-            onChange={(e) => onAtualizar('nome', e.target.value)}
+          {(ex.feedbackDificuldade || ex.feedbackEnergia || ex.feedbackDor || ex.feedbackComentario) && (
+            <div style={mobileStyles.feedbackSummary}>
+              <h3>Último feedback</h3>
+              <p>Dificuldade: <b>{ex.feedbackDificuldade || '-'}</b></p>
+              <p>Energia: <b>{ex.feedbackEnergia || '-'}</b></p>
+              <p>Dor/desconforto: <b>{ex.feedbackDor || '-'}</b></p>
+              {ex.feedbackComentario && <p>{ex.feedbackComentario}</p>}
+            </div>
+          )}
+        </div>
+      )}
+
+      {perfil?.tipo === 'aluno' && abaExercicio === 'feedback' && (
+        <div style={mobileStyles.tabPanel}>
+          <h3 style={{ marginTop: 0 }}>Feedback pós-treino</h3>
+          <p style={mobileStyles.textSoft}>Marque como foi esse exercício para o professor acompanhar sua evolução.</p>
+
+          <FeedbackGrupo
+            titulo="Dificuldade"
+            valor={ex.feedbackDificuldade || ''}
+            opcoes={[
+              ['facil', '😊 Fácil'],
+              ['medio', '😐 Médio'],
+              ['dificil', '🔥 Difícil'],
+            ]}
+            onChange={(valor: string) => onAtualizar('feedbackDificuldade', valor)}
           />
 
-          <input
-            style={mobileStyles.inputMobile}
-            placeholder="Séries"
-            value={ex.series || ''}
-            onChange={(e) => onAtualizar('series', e.target.value)}
+          <FeedbackGrupo
+            titulo="Energia"
+            valor={ex.feedbackEnergia || ''}
+            opcoes={[
+              ['baixa', '🔋 Baixa'],
+              ['normal', '⚡ Normal'],
+              ['alta', '🚀 Alta'],
+            ]}
+            onChange={(valor: string) => onAtualizar('feedbackEnergia', valor)}
           />
 
-          <input
-            style={mobileStyles.inputMobile}
-            placeholder="Repetições"
-            value={ex.repeticoes || ''}
-            onChange={(e) => onAtualizar('repeticoes', e.target.value)}
+          <FeedbackGrupo
+            titulo="Dor ou desconforto"
+            valor={ex.feedbackDor || ''}
+            opcoes={[
+              ['nao', '✅ Não'],
+              ['sim', '⚠️ Sim'],
+            ]}
+            onChange={(valor: string) => onAtualizar('feedbackDor', valor)}
           />
 
-          <input
-            style={mobileStyles.inputMobile}
-            placeholder="Descanso em segundos"
-            value={ex.descanso || ''}
-            onChange={(e) => onAtualizar('descanso', e.target.value)}
+          <textarea
+            style={mobileStyles.textareaMobile}
+            placeholder="Comentário para o professor"
+            value={ex.feedbackComentario || ''}
+            onChange={(e) => onAtualizar('feedbackComentario', e.target.value)}
           />
 
-          <input
-            style={mobileStyles.inputMobile}
-            placeholder="Método"
-            value={ex.metodo || ''}
-            onChange={(e) => onAtualizar('metodo', e.target.value)}
-          />
+          <button style={mobileStyles.finishButton} onClick={onFinalizar}>
+            ✓ Finalizar e salvar feedback
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
 
+function InfoLinha({ titulo, valor }: any) {
+  return (
+    <div style={mobileStyles.infoLine}>
+      <small>{titulo}</small>
+      <b>{valor}</b>
+    </div>
+  );
+}
+
+function FeedbackGrupo({ titulo, valor, opcoes, onChange }: any) {
+  return (
+    <div style={mobileStyles.feedbackGroup}>
+      <b>{titulo}</b>
+      <div style={mobileStyles.feedbackOptions}>
+        {opcoes.map(([id, label]: any) => (
           <button
-            style={mobileStyles.saveModelButton}
-            onClick={onSalvarBiblioteca}
+            key={id}
+            style={valor === id ? mobileStyles.feedbackOptionActive : mobileStyles.feedbackOption}
+            onClick={() => onChange(id)}
           >
-            Salvar na biblioteca
+            {label}
           </button>
-
-          <button style={mobileStyles.deleteButton} onClick={onExcluir}>
-            Remover exercício do treino
-          </button>
-        </details>
-      )}
-
-      {perfil?.tipo === 'aluno' && (
-        <button style={mobileStyles.finishButton} onClick={onFinalizar}>
-          ✓ Finalizar exercício
-        </button>
-      )}
+        ))}
+      </div>
     </div>
   );
 }
@@ -4319,6 +4425,265 @@ const mobileStyles: any = {
     color: '#CBD5E1',
     display: 'block',
     marginTop: 3,
+  },
+
+  exerciseMiniPremium: {
+    background: 'linear-gradient(135deg,#111827,#0B1020)',
+    border: '1px solid #253047',
+    borderRadius: 18,
+    padding: 14,
+    marginBottom: 12,
+    color: 'white',
+    display: 'grid',
+    gridTemplateColumns: '1fr auto',
+    alignItems: 'center',
+    gap: 12,
+    cursor: 'pointer',
+    boxShadow: '0 10px 24px rgba(0,0,0,.18)',
+  },
+  miniTitle: {
+    display: 'block',
+    whiteSpace: 'nowrap',
+    overflow: 'hidden',
+    textOverflow: 'ellipsis',
+    maxWidth: 360,
+  },
+  miniActions: {
+    display: 'flex',
+    gap: 8,
+    alignItems: 'center',
+    flexWrap: 'wrap',
+    justifyContent: 'flex-end',
+  },
+  miniLibraryButton: {
+    border: '1px solid rgba(34,197,94,.45)',
+    background: 'linear-gradient(135deg,rgba(22,163,74,.95),rgba(34,197,94,.82))',
+    color: 'white',
+    borderRadius: 12,
+    padding: '10px 12px',
+    fontWeight: 900,
+    cursor: 'pointer',
+  },
+  miniDeleteButton: {
+    border: '1px solid rgba(239,68,68,.45)',
+    background: 'linear-gradient(135deg,rgba(220,38,38,.95),rgba(239,68,68,.82))',
+    color: 'white',
+    borderRadius: 12,
+    padding: '10px 12px',
+    fontWeight: 900,
+    cursor: 'pointer',
+  },
+  miniOpenButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 12,
+    border: '1px solid #7C3AED',
+    background: 'rgba(124,58,237,.18)',
+    color: '#C4B5FD',
+    fontSize: 22,
+    fontWeight: 900,
+    cursor: 'pointer',
+  },
+  miniProgressBox: {
+    minWidth: 62,
+    textAlign: 'center',
+    border: '1px solid #334155',
+    borderRadius: 14,
+    padding: '8px 10px',
+    background: 'rgba(15,23,42,.9)',
+  },
+  headerDeleteButton: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    border: '1px solid rgba(239,68,68,.45)',
+    background: 'rgba(220,38,38,.15)',
+    color: 'white',
+    cursor: 'pointer',
+  },
+  heroCardCompact: {
+    background: 'linear-gradient(135deg,#182235,#0F172A)',
+    border: '1px solid #1F2937',
+    borderRadius: 22,
+    padding: 14,
+    display: 'flex',
+    gap: 14,
+    alignItems: 'flex-start',
+    marginBottom: 14,
+  },
+  exerciseIconSmall: {
+    width: 54,
+    height: 54,
+    borderRadius: 18,
+    background: 'linear-gradient(135deg,#7C3AED,#4C1D95)',
+    display: 'grid',
+    placeItems: 'center',
+    fontSize: 26,
+    flexShrink: 0,
+  },
+  exerciseNameCompact: {
+    margin: '0 0 4px',
+    fontSize: 24,
+    lineHeight: 1.05,
+  },
+  exerciseTabsBar: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))',
+    gap: 8,
+    marginBottom: 14,
+    background: 'rgba(2,6,23,.45)',
+    border: '1px solid #1F2937',
+    borderRadius: 18,
+    padding: 8,
+  },
+  exerciseTab: {
+    border: '1px solid #334155',
+    background: '#111827',
+    color: '#CBD5E1',
+    borderRadius: 14,
+    padding: '11px 12px',
+    fontWeight: 900,
+    cursor: 'pointer',
+  },
+  exerciseTabActive: {
+    border: '1px solid #A855F7',
+    background: 'linear-gradient(135deg,#7C3AED,#9333EA)',
+    color: 'white',
+    borderRadius: 14,
+    padding: '11px 12px',
+    fontWeight: 900,
+    cursor: 'pointer',
+    boxShadow: '0 0 18px rgba(124,58,237,.3)',
+  },
+  tabPanel: {
+    background: 'rgba(15,23,42,.42)',
+    border: '1px solid #1F2937',
+    borderRadius: 22,
+    padding: 14,
+  },
+  videoCardCompact: {
+    position: 'relative',
+    background: '#050816',
+    border: '1px solid #263244',
+    borderRadius: 20,
+    overflow: 'hidden',
+    marginBottom: 14,
+  },
+  seriesGridCompact: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))',
+    gap: 10,
+    marginBottom: 14,
+  },
+  serieCardCompact: {
+    background: '#111827',
+    border: '1px solid #334155',
+    color: 'white',
+    borderRadius: 18,
+    minHeight: 105,
+    padding: 12,
+    display: 'grid',
+    gap: 5,
+    placeItems: 'center',
+    cursor: 'pointer',
+  },
+  serieIconSmall: {
+    width: 38,
+    height: 38,
+    borderRadius: '50%',
+    display: 'grid',
+    placeItems: 'center',
+    fontSize: 15,
+    fontWeight: 900,
+  },
+  timerCardCompact: {
+    background: 'linear-gradient(135deg,#111827,#0B1020)',
+    border: '1px solid #263244',
+    borderRadius: 20,
+    padding: 14,
+    marginBottom: 14,
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 12,
+    alignItems: 'center',
+  },
+  timerCompactRight: {
+    display: 'flex',
+    alignItems: 'center',
+    gap: 12,
+    color: 'white',
+  },
+  professorQuickActions: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+    gap: 10,
+    marginTop: 10,
+  },
+  editGrid: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit,minmax(180px,1fr))',
+    gap: 10,
+  },
+  detailList: {
+    display: 'grid',
+    gap: 10,
+  },
+  infoLine: {
+    background: '#0B1020',
+    border: '1px solid #263244',
+    borderRadius: 16,
+    padding: 12,
+    display: 'grid',
+    gap: 5,
+  },
+  historyLine: {
+    background: '#0B1020',
+    border: '1px solid #263244',
+    borderRadius: 16,
+    padding: 12,
+    marginBottom: 10,
+    display: 'flex',
+    justifyContent: 'space-between',
+    gap: 10,
+    flexWrap: 'wrap',
+  },
+  feedbackSummary: {
+    background: 'rgba(124,58,237,.14)',
+    border: '1px solid rgba(168,85,247,.35)',
+    borderRadius: 18,
+    padding: 14,
+    marginTop: 14,
+  },
+  feedbackGroup: {
+    background: '#0B1020',
+    border: '1px solid #263244',
+    borderRadius: 18,
+    padding: 12,
+    marginBottom: 12,
+  },
+  feedbackOptions: {
+    display: 'grid',
+    gridTemplateColumns: 'repeat(auto-fit,minmax(110px,1fr))',
+    gap: 8,
+    marginTop: 10,
+  },
+  feedbackOption: {
+    border: '1px solid #334155',
+    background: '#111827',
+    color: '#CBD5E1',
+    borderRadius: 14,
+    padding: '12px 10px',
+    fontWeight: 900,
+    cursor: 'pointer',
+  },
+  feedbackOptionActive: {
+    border: '1px solid #A855F7',
+    background: 'linear-gradient(135deg,#7C3AED,#9333EA)',
+    color: 'white',
+    borderRadius: 14,
+    padding: '12px 10px',
+    fontWeight: 900,
+    cursor: 'pointer',
   },
 };
 
