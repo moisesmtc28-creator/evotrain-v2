@@ -1305,10 +1305,14 @@ export default function App() {
 
     const novo: Exercicio = {
       ...novoExercicioDraft,
-      ordem: 0,
+      ordem: (treino.exercicios || []).length,
     };
 
-    await salvarExercicios(treino, [novo, ...(treino.exercicios || [])]);
+    // A ordem de cadastro deve ser mantida: o próximo exercício vai ao final.
+    await salvarExercicios(treino, [
+      ...ordenarExercicios(treino.exercicios || []),
+      novo,
+    ]);
 
     setNovoExercicioDraft(null);
     setExercicioAbertoId('');
@@ -1410,7 +1414,10 @@ export default function App() {
     modelo: ExercicioBiblioteca
   ) {
     const novo = prepararExercicioParaTreino(modelo);
-    await salvarExercicios(treino, [novo, ...(treino.exercicios || [])]);
+    await salvarExercicios(treino, [
+      ...ordenarExercicios(treino.exercicios || []),
+      novo,
+    ]);
     setExercicioAbertoId(novo.id);
   }
 
@@ -3377,7 +3384,7 @@ export default function App() {
 
                       <p>
                         Preencha os campos e clique em salvar. Ele será
-                        adicionado no topo do treino.
+                        adicionado ao final do treino, mantendo a ordem de cadastro.
                       </p>
 
                       <Field
@@ -4753,12 +4760,9 @@ function MenuItem({ label, icon, ativo, onClick }: any) {
 }
 
 function ordenarExercicios(exercicios: Exercicio[]) {
-  const lista = [...exercicios].sort((a, b) => (a.ordem || 0) - (b.ordem || 0));
-
-  return [
-    ...lista.filter((e) => !e.finalizado),
-    ...lista.filter((e) => e.finalizado),
-  ];
+  // Concluir um exercício não altera sua posição na sequência do treino.
+  // Manter a ordem manual se o professor tiver reorganizado os exercícios.
+  return [...exercicios].sort((a, b) => (a.ordem ?? 0) - (b.ordem ?? 0));
 }
 
 function calcularProgresso(treino: Treino) {
